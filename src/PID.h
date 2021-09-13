@@ -31,7 +31,7 @@ class PID {
    */
   double TotalError();
 
- private:
+ //private:
   /**
    * PID Errors
    */
@@ -45,6 +45,18 @@ class PID {
   double Kp;
   double Ki;
   double Kd;
+
+  // Add parameters
+  double prev_cte;
+
+  double Kp_min;
+  double Ki_min;
+  double Kd_min;
+  double Kp_max;
+  double Ki_max;
+  double Kd_max;
+
+  int count;
 };
 
 #endif  // PID_H

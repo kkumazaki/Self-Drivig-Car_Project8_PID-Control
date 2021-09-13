@@ -37,12 +37,30 @@ int main() {
   /**
    * TODO: Initialize the pid variable.
    */
+  // Kp, Ki, Kd
+  //pid.Init(3.0, 10.0, 0.5); // [Tri#1] Too strong gain, so vehicle wander a lot at first!
+  //pid.Init(0.10, 0.001, 1.0); //[Tri#2]  It can run the course stably and smoothly, but at the curve there's overshoot.
+  //pid.Init(0.16, 0.001, 1.5); // [Tri#3] I made Kp bigger, and at the same time Kd bigger to increase dumpering. The vehicle wander at straight road.  
+  //pid.Init(0.16, 0.002, 2.0); // [Tri#4] I made Kd bigger to increase dumpering. Still the  vehicle wander at straight road.  
+  //pid.Init(0.16, 0.002, 4.0); // [Tri#5] I made Kd bigger to increase dumpering. Still the  vehicle wander at straight road.  
+  //pid.Init(0.16, 0.002, 10.0); // [Tri#6] I made Kd bigger to increase dumpering. The vehicle movement is too quick.
+  //pid.Init(0.12, 0.001, 1.0); // [Tri#7] It is middle of Kp=0.1 and Kp=0.15. In straight, it needs to be more smooth. In curve, it should steer quickly.
+  pid.Init(0.08, 0.001, 1.0); // [Tri#8] Set the initial gain that prioritize smoothness, and make it bigger when the deviation is big (especially in curvve).
+
+  pid.p_error = 0.0;
+  pid.i_error = 0.0;
+  pid.d_error = 0.0;
+
+  pid.prev_cte = 0.0;
+
+  pid.count = 1;
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
+
     if (length && length > 2 && data[0] == '4' && data[1] == '2') {
       auto s = hasData(string(data).substr(0, length));
 
@@ -63,10 +81,64 @@ int main() {
            * NOTE: Feel free to play around with the throttle and speed.
            *   Maybe use another PID controller to control the speed!
            */
+
+          // [Step#1] Adaptive Gain
+          // Purpose: To drive smoothly, Kp should be smaller than 0.1.
+          //          However, Kp should be bigger than 0.1 to avoid overshoot at curve.
+          //          So, I change PID gains according to the deviation from the center.
+
+          // Set the max gain when there's big overshoot at curve.
+          // Value is twice as big as min gain.
+          pid.Kp_max = 0.16;
+          pid.Ki_max = 0.002;
+          pid.Kd_max = 2.0;
+
+          // Change the gain proportionally according to the deviation: cte.
+          // If cte is smaller than 0.2[m], min gain. If cte is bigger than 1.2[m], max gain.
+          double cte_min = 0.2;
+          double cte_max = 1.2;
+
+          pid.Kp = (pid.Kp_max - pid.Kp_min)/(cte_max - cte_min) * (std::abs(cte) - cte_min) + pid.Kp_min;
+          pid.Ki = (pid.Ki_max - pid.Ki_min)/(cte_max - cte_min) * (std::abs(cte) - cte_min) + pid.Ki_min;
+          pid.Kd = (pid.Kd_max - pid.Kd_min)/(cte_max - cte_min) * (std::abs(cte) - cte_min) + pid.Kd_min;
+  
+          if(std::abs(cte) < cte_min){
+            pid.Kp = pid.Kp_min;
+            pid.Ki = pid.Ki_min;
+            pid.Kd = pid.Kd_min;
+          }
+          if(std::abs(cte) > cte_max){
+            pid.Kp = pid.Kp_max;
+            pid.Ki = pid.Ki_max;
+            pid.Kd = pid.Kd_max;
+          }
+
+          // [Step#2] Calculate steering angle by PID Controller
+          pid.p_error = cte;
+          pid.d_error = cte - pid.prev_cte;
+          pid.prev_cte = cte;
+          pid.i_error += cte;
           
+          steer_value = -pid.Kp*pid.p_error -pid.Kd*pid.d_error -pid.Ki*pid.i_error;
+          if(steer_value >= 1.0){
+            steer_value = 1.0;
+          } else if(steer_value <= -1.0){
+            steer_value = -1.0;
+          }
+
+          pid.count ++;
+
+          std::cout << "Kp: " << pid.Kp << " Kd: " << pid.Kd 
+                    << " Ki: " << pid.Ki << std::endl;
+
+          std::cout << "P error: " << pid.p_error << " D error: " << pid.d_error 
+                    << " I error: " << pid.i_error << std::endl;
+
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value 
                     << std::endl;
+
+          std::cout << "------------------------------"  << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;

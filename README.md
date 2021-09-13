@@ -2,6 +2,40 @@
 Self-Driving Car Engineer Nanodegree Program
 
 ---
+## Goals
+In this project my goal is to design the PID Controller to control the autonomous vehicle that run on the Lake Course (same course as the project: Behavior Planning). 
+The vehicle should run smoothly and don’t overshoot on curves.
+
+## Steps
+The steps of this project are the following:  
+### (1)	Find some good Gains  
+At first, design the basic PID controller by referring Lesson 12.
+And I tried some sets of P gain, I gain and D gain, then find the 2 sets of gains that meet the following each specification:  
+#### (a)	Run smoothly on straight roads. (However, there’s overshoot at curves.)  
+#### (b)	Don’t overshoot on curves. (However, there’s wondering on straight roads.)  
+
+### (2)	Combine good Gains  
+It’s difficult to have one optimal set of gains, so I take advantage of each set of gains (a) (b) above.  
+To do so, I dynamically change gains according to the following way:  
+-	If the absolute value of Cross Track Error (variable: cte) is smaller than some value, I use the set of 
+gains (a) above. If cte is small, there’s low risk of lane deviation.
+-	If the absolute value of cte is bigger than some value, I use the set of gains (b) above.
+On curves I set higher priority to avoid overshoot than running smoothly.
+-	Between the range of these 2 points, I use interpolation to gradually change the set of gains.
+
+## Result
+I ran the Simulator with PID controller, and I achieved the Project Rubric as below:  
+The vehicle must successfully drive a lap around the track.  
+No tire may leave the drivable portion of the track surface. 
+The car may not pop up onto ledges or roll over any surfaces that would otherwise be considered unsafe (if humans were in the vehicle).
+
+It can run on curves without overshoot as below, thanks to the big gain (b).  
+<img src="result/fig1.png" width="240" alt="Combined Image" />
+
+It can run smoothly on straight roads as below, thanks to the small gain (a).   
+<img src="result/fig2.png" width="240" alt="Combined Image" /> <img src="result/fig3.png" width="240" alt="Combined Image" />
+
+### Please refer the writeup material for details. [Writeup_of_Lesson13.pdf](https://github.com/kkumazaki/Self-Drivig-Car_Project8_PID-Control/blob/master/Writeup_of_Lesson13.pdf)
 
 ## Dependencies
 
